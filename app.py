@@ -1,3 +1,8 @@
+st.set_page_config(
+    page_title="RC Furnace Fan Dashboard",
+    page_icon="⚙",
+    layout="wide"
+)
 import streamlit as st
 import pandas as pd
 import plotly.express as px
