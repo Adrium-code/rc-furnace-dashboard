@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+PASSWORD = "tata123"
 
 st.set_page_config(
     page_title="RC Furnace Fan Dashboard",
@@ -98,6 +99,14 @@ with st.expander(" Risk & Health Standards for the Furnace Fan"):
         """)
 
 with st.sidebar:
+    st.subheader("Admin Access")
+
+    entered_password = st.text_input(
+       "Enter Password",
+       type="password",
+       )
+    authorized = entered_password == PASSWORD
+
     st.subheader("Recent Activities")
 
     if st.session_state.activity_log:
@@ -114,129 +123,129 @@ with st.sidebar:
           
     st.markdown("---")
     with st.expander("➕ Add Inspection"):
+      if authorized:
+          with st.form("inspection_form"):
 
-        with st.form("inspection_form"):
-
-            fan_id = st.selectbox(
-                "Fan ID",
-                df["Fan ID"].unique()
-            )
+              fan_id = st.selectbox(
+                  "Fan ID",
+                  df["Fan ID"].unique()
+              )
             
-            inspection_date = st.date_input(
-               "Inspection Date"
-            )
+              inspection_date = st.date_input(
+                 "Inspection Date"
+              )
 
-            vib_x = st.number_input(
-                "Vibration X (mm/s)",
-                value=2.0
-            )
+              vib_x = st.number_input(
+                  "Vibration X (mm/s)",
+                  value=2.0
+              )
 
-            vib_y = st.number_input(
-                "Vibration Y (mm/s)",
-                value=2.0
-            )
+              vib_y = st.number_input(
+                  "Vibration Y (mm/s)",
+                  value=2.0
+              )
 
-            bearing_temp = st.number_input(
-                "Bearing Temp (°C)",
-                value=65.0
-            )
+              bearing_temp = st.number_input(
+                  "Bearing Temp (°C)",
+                  value=65.0
+              )
             
-            furnace_temp = st.number_input(
-                "Furnace Temp (°C)",
-               value=910.0
-            )
+              furnace_temp = st.number_input(
+                  "Furnace Temp (°C)",
+                 value=910.0
+              )
             
-            rpm = st.number_input(
-                "RPM",
-                value=1478.0
-            )
+              rpm = st.number_input(
+                  "RPM",
+                  value=1478.0
+              )
 
-            current = st.number_input(
-                "Motor Current (A)",
-                value=23.0
-            )
+              current = st.number_input(
+                  "Motor Current (A)",
+                  value=23.0
+              )
 
-            power = st.number_input(
-                "Power Consumption (kW)",
-                value=15.5
-            )
+              power = st.number_input(
+                  "Power Consumption (kW)",
+                  value=15.5
+              )
 
-            operating_hours = st.number_input(
-                "Operating Hours",
-                value=1000
-            )
+              operating_hours = st.number_input(
+                  "Operating Hours",
+                  value=1000
+              )
 
-            submitted = st.form_submit_button(
-                "Submit Inspection Data"
-            )
+              submitted = st.form_submit_button(
+                  "Submit Inspection Data"
+              )
 
-            if submitted:
+              if submitted:
 
-                health = (
-                    100
-                    - max(0, (vib_x - 2.4) * 7)
-                    - max(0, (vib_y - 2.4) * 7)
-                    - max(0, (bearing_temp - 70) * 1.3)
-                    - max(0, (current - 23.8) * 5)
-                )
+                  health = (
+                      100
+                      - max(0, (vib_x - 2.4) * 7)
+                      - max(0, (vib_y - 2.4) * 7)
+                      - max(0, (bearing_temp - 70) * 1.3)
+                      - max(0, (current - 23.8) * 5)
+                  )
 
-                health = round(
-                    max(62, min(98, health)),
-                    1
-                )
+                  health = round(
+                      max(62, min(98, health)),
+                      1
+                  )
 
-                if health >= 90:
-                    risk = "Low"
-                    remaining_life = "24 months"
+                  if health >= 90:
+                      risk = "Low"
+                      remaining_life = "24 months"
 
-                elif health >= 78:
-                    risk = "Moderate"
-                    remaining_life = "12 months"
+                  elif health >= 78:
+                      risk = "Moderate"
+                      remaining_life = "12 months"
 
-                else:
-                    risk = "High"
-                    remaining_life = "6 months"
+                  else:
+                      risk = "High"
+                      remaining_life = "6 months"
 
-                next_maintenance = (
-                    pd.Timestamp.today()
-                    + pd.Timedelta(days=180)
-                )
+                  next_maintenance = (
+                      pd.Timestamp.today()
+                      + pd.Timedelta(days=180)
+                  )
 
-                new_row = {
-                    "Date": inspection_date,
-                    "Fan ID": fan_id,
-                    "Furnace Temp (°C)": furnace_temp,
-                    "Vibration X (mm/s)": vib_x,
-                    "Vibration Y (mm/s)": vib_y,
-                    "Bearing Temp (°C)": bearing_temp,
-                    "RPM": rpm,
-                    "Motor Current (A)": current,
-                    "Power Consumption (kW)": power,
-                    "Operating Hours": operating_hours,
-                    "Health Score (%)": health,
-                    "Risk Level": risk,
-                    "Maintenance Performed": "No",
-                    "Predicted Remaining Life": remaining_life,
-                    "Next Maintenance Date": next_maintenance.strftime("%Y-%m-%d")
-                }
+                  new_row = {
+                      "Date": inspection_date,
+                      "Fan ID": fan_id,
+                      "Furnace Temp (°C)": furnace_temp,
+                      "Vibration X (mm/s)": vib_x,
+                      "Vibration Y (mm/s)": vib_y,
+                      "Bearing Temp (°C)": bearing_temp,
+                      "RPM": rpm,
+                      "Motor Current (A)": current,
+                      "Power Consumption (kW)": power,
+                      "Operating Hours": operating_hours,
+                      "Health Score (%)": health,
+                      "Risk Level": risk,
+                      "Maintenance Performed": "No",
+                      "Predicted Remaining Life": remaining_life,
+                      "Next Maintenance Date": next_maintenance.strftime("%Y-%m-%d")
+                  }
 
-                df = pd.concat(
-                    [df, pd.DataFrame([new_row])],
-                    ignore_index=True
-                )
+                  df = pd.concat(
+                      [df, pd.DataFrame([new_row])],
+                      ignore_index=True
+                  )
 
-                df.to_csv(
-                    "rc_fan_realistic_maintenance_dataset.csv",
-                    index=False
-                )
+                  df.to_csv(
+                      "rc_fan_realistic_maintenance_dataset.csv",
+                      index=False
+                  )
                 
-                st.session_state.activity_log.append(
-                   f"Inspection added for {fan_id}"
-                )
+                  st.session_state.activity_log.append(
+                     f"Inspection added for {fan_id}"
+                  )
 
-                st.success(
-                    "New inspection data added successfully!"
-                )
+                  st.success(
+                      "New inspection data added successfully!"
+                  )
 
 selected_fan = st.session_state.get(
     "selected_fan",
@@ -294,237 +303,238 @@ with st.sidebar:
 
         if st.button("✏ Edit Recent Entry"):
            st.session_state.edit_mode = True
+        
+        if authorized:
+          if st.session_state.edit_mode:
 
-        if st.session_state.edit_mode:
+              editable_df = df.tail(5).copy()
 
-            editable_df = df.tail(5).copy()
+              editable_df.index = (
+                 editable_df.index + 1
+               )
 
-            editable_df.index = (
-                editable_df.index + 1
-            )
+              edit_options = []
 
-            edit_options = []
+              for idx, row in editable_df.iterrows():
 
-            for idx, row in editable_df.iterrows():
+                  option = (
+                      f"{idx} | "
+                      f"{row['Date']} | "
+                      f"{row['Fan ID']}"
+                  )
 
-                option = (
-                    f"{idx} | "
-                    f"{row['Date']} | "
-                    f"{row['Fan ID']}"
-                )
+                  edit_options.append(option)
 
-                edit_options.append(option)
+              selected_option = st.selectbox(
+                  "Select Entry",
+                  edit_options
+              )
 
-            selected_option = st.selectbox(
-                "Select Entry",
-                edit_options
-            )
+              selected_index = int(
+                  selected_option.split("|")[0].strip()
+              ) - 1
 
-            selected_index = int(
-                selected_option.split("|")[0].strip()
-            ) - 1
+              selected_entry = df.loc[selected_index]
 
-            selected_entry = df.loc[selected_index]
+              edit_furnace = st.number_input(
+                  "Furnace Temp (°C)",
+                  value=float(
+                      selected_entry[
+                          "Furnace Temp (°C)"
+                      ]
+                  ),
+                  key="edit_ft"
+              )
 
-            edit_furnace = st.number_input(
-                "Furnace Temp (°C)",
-                value=float(
-                    selected_entry[
-                        "Furnace Temp (°C)"
-                    ]
-                ),
-                key="edit_ft"
-            )
+              edit_vx = st.number_input(
+                  "Vibration X (mm/s)",
+                  value=float(
+                      selected_entry[
+                          "Vibration X (mm/s)"
+                      ]
+                  ),
+                  key="edit_vx"
+              )
 
-            edit_vx = st.number_input(
-                "Vibration X (mm/s)",
-                value=float(
-                    selected_entry[
-                        "Vibration X (mm/s)"
-                    ]
-                ),
-                key="edit_vx"
-            )
+              edit_vy = st.number_input(
+                  "Vibration Y (mm/s)",
+                  value=float(
+                      selected_entry[
+                          "Vibration Y (mm/s)"
+                      ]
+                  ),
+                  key="edit_vy"
+              )
 
-            edit_vy = st.number_input(
-                "Vibration Y (mm/s)",
-                value=float(
-                    selected_entry[
-                        "Vibration Y (mm/s)"
-                    ]
-                ),
-                key="edit_vy"
-            )
+              edit_bearing = st.number_input(
+                  "Bearing Temp (°C)",
+                  value=float(
+                      selected_entry[
+                          "Bearing Temp (°C)"
+                      ]
+                  ),
+                  key="edit_bt"
+              )
 
-            edit_bearing = st.number_input(
-                "Bearing Temp (°C)",
-                value=float(
-                    selected_entry[
-                        "Bearing Temp (°C)"
-                    ]
-                ),
-                key="edit_bt"
-            )
+              edit_rpm = st.number_input(
+                  "RPM",
+                  value=float(
+                      selected_entry["RPM"]
+                  ),
+                  key="edit_rpm"
+              )
 
-            edit_rpm = st.number_input(
-                "RPM",
-                value=float(
-                    selected_entry["RPM"]
-                ),
-                key="edit_rpm"
-            )
+              edit_current = st.number_input(
+                  "Motor Current (A)",
+                  value=float(
+                      selected_entry[
+                          "Motor Current (A)"
+                      ]
+                  ),
+                  key="edit_current"
+              )
 
-            edit_current = st.number_input(
-                "Motor Current (A)",
-                value=float(
-                    selected_entry[
-                        "Motor Current (A)"
-                    ]
-                ),
-                key="edit_current"
-            )
+              edit_power = st.number_input(
+                  "Power Consumption (kW)",
+                  value=float(
+                      selected_entry[
+                          "Power Consumption (kW)"
+                      ]
+                  ),
+                  key="edit_power"
+              )
 
-            edit_power = st.number_input(
-                "Power Consumption (kW)",
-                value=float(
-                    selected_entry[
-                        "Power Consumption (kW)"
-                    ]
-                ),
-                key="edit_power"
-            )
+              edit_hours = st.number_input(
+                  "Operating Hours",
+                  value=float(
+                      selected_entry[
+                          "Operating Hours"
+                      ]
+                  ),
+                  key="edit_hours"
+              )
 
-            edit_hours = st.number_input(
-                "Operating Hours",
-                value=float(
-                    selected_entry[
-                        "Operating Hours"
-                    ]
-                ),
-                key="edit_hours"
-            )
+              col_save, col_cancel = st.columns(2)
 
-            col_save, col_cancel = st.columns(2)
+              save_clicked = col_save.button(
+                  "Save Edited Entry"
+              )
 
-            save_clicked = col_save.button(
-                "Save Edited Entry"
-            )
+              cancel_clicked = col_cancel.button(
+                  "Cancel"
+              )
 
-            cancel_clicked = col_cancel.button(
-                "Cancel"
-            )
+              if cancel_clicked:
 
-            if cancel_clicked:
+                  st.session_state.edit_mode = False
+                  st.rerun()
 
-                st.session_state.edit_mode = False
-                st.rerun()
+              if save_clicked:
 
-            if save_clicked:
+                  health = (
+                      100
+                      - max(0, (edit_vx - 2.4) * 7)
+                      - max(0, (edit_vy - 2.4) * 7)
+                      - max(
+                          0,
+                          (edit_bearing - 70)
+                          * 1.3
+                      )
+                      - max(
+                          0,
+                          (edit_current - 23.8)
+                          * 5
+                      )
+                  )
 
-                health = (
-                    100
-                    - max(0, (edit_vx - 2.4) * 7)
-                    - max(0, (edit_vy - 2.4) * 7)
-                    - max(
-                        0,
-                        (edit_bearing - 70)
-                        * 1.3
-                    )
-                    - max(
-                        0,
-                        (edit_current - 23.8)
-                        * 5
-                    )
-                )
+                  health = round(
+                      max(62, min(98, health)),
+                      1
+                  )
 
-                health = round(
-                    max(62, min(98, health)),
-                    1
-                )
+                  if health >= 90:
 
-                if health >= 90:
+                      risk = "Low"
+                      remaining_life = "24 months"
 
-                    risk = "Low"
-                    remaining_life = "24 months"
+                  elif health >= 78:
 
-                elif health >= 78:
+                      risk = "Moderate"
+                      remaining_life = "12 months"
 
-                    risk = "Moderate"
-                    remaining_life = "12 months"
+                  else:
 
-                else:
+                      risk = "High"
+                      remaining_life = "6 months"
 
-                    risk = "High"
-                    remaining_life = "6 months"
+                  df.at[
+                      selected_index,
+                      "Furnace Temp (°C)"
+                  ] = edit_furnace
 
-                df.at[
-                    selected_index,
-                    "Furnace Temp (°C)"
-                ] = edit_furnace
+                  df.at[
+                      selected_index,
+                      "Vibration X (mm/s)"
+                  ] = edit_vx
 
-                df.at[
-                    selected_index,
-                    "Vibration X (mm/s)"
-                ] = edit_vx
+                  df.at[
+                      selected_index,
+                      "Vibration Y (mm/s)"
+                  ] = edit_vy
 
-                df.at[
-                    selected_index,
-                    "Vibration Y (mm/s)"
-                ] = edit_vy
+                  df.at[
+                      selected_index,
+                      "Bearing Temp (°C)"
+                  ] = edit_bearing
 
-                df.at[
-                    selected_index,
-                    "Bearing Temp (°C)"
-                ] = edit_bearing
+                  df.at[
+                      selected_index,
+                      "RPM"
+                  ] = edit_rpm
 
-                df.at[
-                    selected_index,
-                    "RPM"
-                ] = edit_rpm
+                  df.at[
+                      selected_index,
+                      "Motor Current (A)"
+                  ] = edit_current
 
-                df.at[
-                    selected_index,
-                    "Motor Current (A)"
-                ] = edit_current
+                  df.at[
+                      selected_index,
+                      "Power Consumption (kW)"
+                  ] = edit_power
 
-                df.at[
-                    selected_index,
-                    "Power Consumption (kW)"
-                ] = edit_power
+                  df.at[
+                      selected_index,
+                      "Operating Hours"
+                  ] = edit_hours
 
-                df.at[
-                    selected_index,
-                    "Operating Hours"
-                ] = edit_hours
+                  df.at[
+                      selected_index,
+                      "Health Score (%)"
+                  ] = health
 
-                df.at[
-                    selected_index,
-                    "Health Score (%)"
-                ] = health
+                  df.at[
+                      selected_index,
+                      "Risk Level"
+                  ] = risk
 
-                df.at[
-                    selected_index,
-                    "Risk Level"
-                ] = risk
+                  df.at[
+                      selected_index,
+                      "Predicted Remaining Life"
+                  ] = remaining_life
 
-                df.at[
-                    selected_index,
-                    "Predicted Remaining Life"
-                ] = remaining_life
+                  df.to_csv(
+                      "rc_fan_realistic_maintenance_dataset.csv",
+                      index=False
+                  )
+                  st.session_state.activity_log.append(
+                    f"Entry edited for {selected_entry['Fan ID']}"
+                  )
 
-                df.to_csv(
-                    "rc_fan_realistic_maintenance_dataset.csv",
-                    index=False
-                )
-                st.session_state.activity_log.append(
-                  f"Entry edited for {selected_entry['Fan ID']}"
-                )
+                  st.success(
+                      "Entry updated successfully!"
+                  )
 
-                st.success(
-                    "Entry updated successfully!"
-                )
-
-                st.rerun()
+                  st.rerun()
 
     else:
 
