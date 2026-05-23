@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
-PASSWORD = st.secrets["admin_password"]
+PASSWORD = "tata123"
 
 # bearing degradation influence weights
 
@@ -13,7 +13,7 @@ OPERATING_HOURS_WEIGHT = 0.4
 
 # page configuration
 st.set_page_config(
-    page_title="RC Fan Predictive Maintenance System",
+    page_title="RCF Sentinel",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -60,11 +60,31 @@ div[data-testid="stVerticalBlock"] div:has(> div.sticky-container) {
 </style>
 """, unsafe_allow_html=True)
 # dashboard title
-st.title("Predictive Maintenance System for Industrial RC Fan")
+st.markdown(
+    """
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    <h1 style="
+        text-align: center;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 48px;
+        letter-spacing: 4px;
+    ">RCF Sentinel</h1>
+    """,
+    unsafe_allow_html=True
+)
 
-st.caption(
-    f"Last Updated: "
-    f"{pd.Timestamp.now().strftime('%d-%m-%Y , %H:%M:%S')}"
+st.markdown(
+    f"""
+    <p style="
+        text-align: center;
+        color: grey;
+        font-size: 14px;
+        letter-spacing: 1px;
+    ">
+    Predictive Maintenance System for Industrial RC Fans&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;Last Updated: {pd.Timestamp.now().strftime('%d-%m-%Y , %H:%M:%S')}
+    </p>
+    """,
+    unsafe_allow_html=True
 )
 
 
@@ -141,7 +161,7 @@ with st.sidebar:
     )
 
     authorized = entered_password == PASSWORD
-
+    st.markdown("---")
     st.subheader("Recent Activities")
 
     with open("activity_log.txt", "r") as log_file:
@@ -243,7 +263,7 @@ with st.sidebar:
                     degradation_score = (
 
                         (
-                            (vib_x + vib_y) * 5
+                            max(0, (vib_x + vib_y) - 4.5) * 2
                         )
                         * VIBRATION_WEIGHT
 
@@ -257,7 +277,7 @@ with st.sidebar:
                         +
 
                         (
-                            operating_hours / 1000
+                            operating_hours / 4000
                         )
                         * OPERATING_HOURS_WEIGHT
                     )
@@ -266,7 +286,7 @@ with st.sidebar:
 
                         1,
 
-                        int(36 - degradation_score)
+                        int(36 - (degradation_score * 0.4))
 
                     )
 
@@ -615,7 +635,7 @@ with st.sidebar:
                   degradation_score = (
 
                       (
-                          (edit_vx + edit_vy) * 5
+                          max(0, (edit_vx + edit_vy) - 4.5) * 2 
                       )
                       * VIBRATION_WEIGHT
 
@@ -629,7 +649,7 @@ with st.sidebar:
                       +
 
                       (
-                          edit_hours / 1000
+                          edit_hours / 4000
                       )
                       * OPERATING_HOURS_WEIGHT
                   )
@@ -638,7 +658,7 @@ with st.sidebar:
 
                       1,
 
-                      int(36 - degradation_score)
+                      int(36 - (degradation_score * 0.4))
 
                   )
 
@@ -681,6 +701,24 @@ st.write("")
 cols = st.columns(len(fan_list))
 
 
+st.markdown("""
+<style>
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
+}
+.pulse-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+    display: inline-block;
+}
+</style>
+""", unsafe_allow_html=True)
+
+cols = st.columns(len(fan_list))
 
 for i, fan in enumerate(fan_list):
 
@@ -712,24 +750,35 @@ for i, fan in enumerate(fan_list):
                 font-weight: bold;
                 font-size: 20px;
             ">
-                {fan}
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    gap:10px;
+                ">
+                    <div class="pulse-dot"
+                         style="background-color:{color};">
+                    </div>
+                    <span>{fan}</span>
+                </div>
             </div>
             """,
             unsafe_allow_html=True
         )
 
         if st.button(
-         "Close" if selected_fan == fan else "Select",
-         key=fan,
-         use_container_width=True
+            "Close" if selected_fan == fan else "Select",
+            key=fan,
+            use_container_width=True
         ):
 
-         if selected_fan == fan:
-             st.session_state["selected_fan"] = None
+            if selected_fan == fan:
+                st.session_state["selected_fan"] = None
 
-         else:
-             st.session_state["selected_fan"] = fan
-         st.rerun()
+            else:
+                st.session_state["selected_fan"] = fan
+            st.rerun()
+
 
 selected_fan = st.session_state.get(
     "selected_fan",
@@ -751,6 +800,56 @@ fan_data.index = fan_data.index + 1
 
 # latest row
 latest = fan_data.iloc[-1]
+
+# trend analysis
+
+trend_warning = ""
+
+if len(fan_data) >= 5:
+
+    recent_vibration = (
+        fan_data["Vibration X (mm/s)"]
+        .tail(5)
+        .mean()
+    )
+
+    old_vibration = (
+        fan_data["Vibration X (mm/s)"]
+        .iloc[-10:-5]
+        .mean()
+    )
+
+    recent_temp = (
+        fan_data["Bearing Temp (C)"]
+        .tail(5)
+        .mean()
+    )
+
+    old_temp = (
+        fan_data["Bearing Temp (C)"]
+        .iloc[-10:-5]
+        .mean()
+    )
+
+    vibration_change = (
+        recent_vibration - old_vibration
+    )
+
+    temperature_change = (
+        recent_temp - old_temp
+    )
+
+    if vibration_change > 0.1:
+
+        trend_warning += (
+            "Increasing vibration trend detected&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;"
+        )
+
+    if temperature_change > 1:
+
+        trend_warning += (
+            " Bearing temperature rising steadily. "
+        )
 
 # top status cards
 col1, col2, col3 = st.columns([1.2, 1.2, 1.2])
@@ -825,6 +924,12 @@ with col3:
 
 diagnosis = "System operating normally."
 
+if trend_warning:
+
+    diagnosis = (
+        "Early degradation behavior detected."
+    )
+
 if (
     latest["Vibration X (mm/s)"] > 4
     or latest["Vibration Y (mm/s)"] > 4
@@ -866,6 +971,11 @@ st.write("")
 st.warning(
     f"Fault Diagnosis Recommendation :  {diagnosis}"
 )
+if trend_warning:
+
+    st.warning(
+        f"Trend Analysis :  {trend_warning}"
+    )
 
 # maintenance information
 
