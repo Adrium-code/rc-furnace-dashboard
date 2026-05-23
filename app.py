@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
-PASSWORD = "tata123"
+PASSWORD = st.secrets["admin_password"]
 
 # bearing degradation influence weights
 
@@ -98,8 +98,6 @@ if not os.path.exists("activity_log.txt"):
 
 # fan selection buttons
 fan_list = df["Fan ID"].unique()
-
-top_col1, top_col2 = st.columns([1, 1])
 
 with st.expander(" Risk & Health Standards for the Furnace Fan"):
 
@@ -698,7 +696,6 @@ st.markdown('<div class="sticky-container">', unsafe_allow_html=True)
 st.subheader("RC Fan Status Overview")
 st.write("")
 
-cols = st.columns(len(fan_list))
 
 
 st.markdown("""
