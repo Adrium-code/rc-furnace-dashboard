@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-PASSWORD = st.secrets["admin_password"]
+import os
+PASSWORD = "tata123"
 
 # bearing degradation influence weights
 
@@ -9,21 +10,36 @@ VIBRATION_WEIGHT = 0.8
 TEMPERATURE_WEIGHT = 0.6
 OPERATING_HOURS_WEIGHT = 0.4
 
-st.set_page_config(
-    page_title="RC Furnace Fan Dashboard",
-    page_icon="⚙",
-    layout="wide"
-)
-if "activity_log" not in st.session_state:
-
-    st.session_state.activity_log = []
 
 # page configuration
 st.set_page_config(
-    page_title="RC Fan Dashboard",
+    page_title="RC Fan Predictive Maintenance System",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+import base64
+
+def add_background(image_file):
+    with open(image_file, "rb") as f:
+        data = base64.b64encode(f.read()).decode()
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("data:image/png;base64,{data}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+add_background("imgg.png")
+
 # sticky top fan selector styling
 st.markdown("""
 <style>
@@ -44,14 +60,24 @@ div[data-testid="stVerticalBlock"] div:has(> div.sticky-container) {
 </style>
 """, unsafe_allow_html=True)
 # dashboard title
-st.title("RC Furnace Fan Monitoring Dashboard")
+st.title("Predictive Maintenance System for Industrial RC Fan")
+
+st.caption(
+    f"Last Updated: "
+    f"{pd.Timestamp.now().strftime('%d-%m-%Y , %H:%M:%S')}"
+)
+
 
 # load dataset
 df = pd.read_csv("rc_fan_realistic_maintenance_dataset.csv")
 
+if not os.path.exists("activity_log.txt"):
+
+    with open("activity_log.txt", "w") as f:
+        pass
+
 # fan selection buttons
 fan_list = df["Fan ID"].unique()
-top_col1, top_col2 = st.columns([1, 1])
 
 top_col1, top_col2 = st.columns([1, 1])
 
@@ -65,7 +91,7 @@ with st.expander(" Risk & Health Standards for the Furnace Fan"):
         #### 🟢 Low Risk
 
         - Vibration < 2.5 mm/s
-        - Bearing Temp < 70°C
+        - Bearing Temp < 65°C
         - Current < 23.5 A
         - Health > 90
         """)
@@ -80,7 +106,7 @@ with st.expander(" Risk & Health Standards for the Furnace Fan"):
         #### 🟠 Moderate Risk
 
         - Vibration = 2.5–4 mm/s
-        - Bearing Temp = 70–78°C
+        - Bearing Temp = 65–78°C
         - Current = 23.5–25 A
         - Health = 78–90
         """)
@@ -118,17 +144,19 @@ with st.sidebar:
 
     st.subheader("Recent Activities")
 
-    if st.session_state.activity_log:
+    with open("activity_log.txt", "r") as log_file:
 
-        for activity in reversed(
-            st.session_state.activity_log[-5:]
-        ):
+       activities = log_file.readlines()
 
-            st.caption(activity)
+    if activities:
+
+          for activity in reversed(activities[-5:]):
+
+              st.caption(activity)
 
     else:
 
-        st.caption("No recent activities.")
+      st.caption("No recent activities.")
 
     st.markdown("---")
 
@@ -156,12 +184,12 @@ with st.sidebar:
             )
 
             bearing_temp = st.number_input(
-                "Bearing Temp (°C)",
+                "Bearing Temp (C)",
                 value=65.0
             )
 
             furnace_temp = st.number_input(
-                "Furnace Temp (°C)",
+                "Furnace Temp (C)",
                 value=910.0
             )
 
@@ -201,28 +229,28 @@ with st.sidebar:
 
                     health = (
                         100
-                        - max(0, (vib_x - 2.4) * 7)
-                        - max(0, (vib_y - 2.4) * 7)
-                        - max(0, (bearing_temp - 70) * 1.3)
+                        - max(0, (vib_x - 2.5) * 7)
+                        - max(0, (vib_y - 2.5) * 7)
+                        - max(0, (bearing_temp - 65) * 1.3)
                         - max(0, (current - 23.8) * 5)
                     )
 
                     health = round(
-                        max(62, min(98, health)),
+                        max(0, min(100, health)),
                         1
                     )
 
                     degradation_score = (
 
                         (
-                            (vib_x + vib_y) * 10
+                            (vib_x + vib_y) * 5
                         )
                         * VIBRATION_WEIGHT
 
                         +
 
                         (
-                            max(0, bearing_temp - 50)
+                            max(0, bearing_temp - 65)
                         )
                         * TEMPERATURE_WEIGHT
 
@@ -258,18 +286,30 @@ with st.sidebar:
 
                         risk = "High"
 
+                    if risk == "High":
+
+                     maintenance_days = 30
+
+                    elif risk == "Moderate":
+
+                     maintenance_days = 90
+
+                    else:
+
+                     maintenance_days = 180
+
                     next_maintenance = (
-                        pd.Timestamp.today()
-                        + pd.Timedelta(days=180)
+                       pd.Timestamp.today()
+                        + pd.Timedelta(days=maintenance_days)
                     )
 
                     new_row = {
                         "Date": inspection_date,
                         "Fan ID": fan_id,
-                        "Furnace Temp (°C)": furnace_temp,
+                        "Furnace Temp (C)": furnace_temp,
                         "Vibration X (mm/s)": vib_x,
                         "Vibration Y (mm/s)": vib_y,
-                        "Bearing Temp (°C)": bearing_temp,
+                        "Bearing Temp (C)": bearing_temp,
                         "RPM": rpm,
                         "Motor Current (A)": current,
                         "Power Consumption (kW)": power,
@@ -287,16 +327,18 @@ with st.sidebar:
                     )
 
                     df.to_csv(
-                        "rc_fan_realistic_maintenance_dataset.csv",
-                        index=False
+                      "rc_fan_realistic_maintenance_dataset.csv",
+                      index=False
                     )
 
-                    st.session_state.activity_log.append(
-                        f"Inspection added for {fan_id}"
-                    )
+                    with open("activity_log.txt", "a") as log_file:
+
+                      log_file.write(
+                          f"Inspection added for {fan_id}\n"
+                      )
 
                     st.success(
-                        "New inspection data added successfully!"
+                      "New inspection data added successfully!"
                     )
 
 selected_fan = st.session_state.get(
@@ -353,8 +395,17 @@ with st.sidebar:
         if "edit_mode" not in st.session_state:
           st.session_state.edit_mode = False
 
-        if st.button("✏ Edit Recent Entry"):
-           st.session_state.edit_mode = True
+        if authorized:
+
+            if st.button("✏ Edit Recent Entry"):
+
+               st.session_state.edit_mode = True
+
+        else:
+
+           st.caption(
+              "Admin access required to edit entries."
+            )
         
         if authorized:
           if st.session_state.edit_mode:
@@ -389,10 +440,10 @@ with st.sidebar:
               selected_entry = df.loc[selected_index]
 
               edit_furnace = st.number_input(
-                  "Furnace Temp (°C)",
+                  "Furnace Temp (C)",
                   value=float(
                       selected_entry[
-                          "Furnace Temp (°C)"
+                          "Furnace Temp (C)"
                       ]
                   ),
                   key="edit_ft"
@@ -419,10 +470,10 @@ with st.sidebar:
               )
 
               edit_bearing = st.number_input(
-                  "Bearing Temp (°C)",
+                  "Bearing Temp (C)",
                   value=float(
                       selected_entry[
-                          "Bearing Temp (°C)"
+                          "Bearing Temp (C)"
                       ]
                   ),
                   key="edit_bt"
@@ -484,44 +535,36 @@ with st.sidebar:
               if save_clicked:
 
                   health = (
-                      100
-                      - max(0, (edit_vx - 2.4) * 7)
-                      - max(0, (edit_vy - 2.4) * 7)
-                      - max(
-                          0,
-                          (edit_bearing - 70)
-                          * 1.3
-                      )
-                      - max(
-                          0,
-                          (edit_current - 23.8)
-                          * 5
-                      )
-                  )
+                    100
+                     - max(0, (edit_vx - 2.5) * 7)
+                     - max(0, (edit_vy - 2.5) * 7)
+                     - max(0, (edit_bearing - 65) * 1.3)
+                      - max(0, (edit_current - 23.8) * 5)
+                    )
 
                   health = round(
-                      max(62, min(98, health)),
-                      1
-                  )
+                      max(0, min(100, health)),
+                       1
+                    )
 
                   if health >= 90:
 
                       risk = "Low"
-                      remaining_life = "24 months"
+                    
 
                   elif health >= 78:
 
                       risk = "Moderate"
-                      remaining_life = "12 months"
+                   
 
                   else:
 
                       risk = "High"
-                      remaining_life = "6 months"
+                   
 
                   df.at[
                       selected_index,
-                      "Furnace Temp (°C)"
+                      "Furnace Temp (C)"
                   ] = edit_furnace
 
                   df.at[
@@ -536,7 +579,7 @@ with st.sidebar:
 
                   df.at[
                       selected_index,
-                      "Bearing Temp (°C)"
+                      "Bearing Temp (C)"
                   ] = edit_bearing
 
                   df.at[
@@ -569,6 +612,40 @@ with st.sidebar:
                       "Risk Level"
                   ] = risk
 
+                  degradation_score = (
+
+                      (
+                          (edit_vx + edit_vy) * 5
+                      )
+                      * VIBRATION_WEIGHT
+
+                      +
+
+                      (
+                          max(0, edit_bearing - 65)
+                      )
+                      * TEMPERATURE_WEIGHT
+
+                      +
+
+                      (
+                          edit_hours / 1000
+                      )
+                      * OPERATING_HOURS_WEIGHT
+                  )
+
+                  remaining_life = max(
+
+                      1,
+
+                      int(36 - degradation_score)
+
+                  )
+
+                  remaining_life = (
+                      f"{remaining_life} months"
+                  )
+
                   df.at[
                       selected_index,
                       "Predicted Remaining Life"
@@ -578,9 +655,11 @@ with st.sidebar:
                       "rc_fan_realistic_maintenance_dataset.csv",
                       index=False
                   )
-                  st.session_state.activity_log.append(
-                    f"Entry edited for {selected_entry['Fan ID']}"
-                  )
+                  with open("activity_log.txt", "a") as log_file:
+
+                     log_file.write(
+                         f"Entry edited for {selected_entry['Fan ID']}\n"
+                       )
 
                   st.success(
                       "Entry updated successfully!"
@@ -742,6 +821,52 @@ with col3:
         unsafe_allow_html=True
     )
 
+# fault diagnosis recommendation
+
+diagnosis = "System operating normally."
+
+if (
+    latest["Vibration X (mm/s)"] > 4
+    or latest["Vibration Y (mm/s)"] > 4
+):
+
+    diagnosis = (
+        "Possible imbalance, looseness, "
+        "or bearing wear detected."
+    )
+
+elif (
+    latest["Bearing Temp (C)"] > 78
+    and latest["Motor Current (A)"] > 25
+):
+
+    diagnosis = (
+        "Possible bearing friction "
+        "or motor overload condition."
+    )
+
+elif (
+    latest["Bearing Temp (C)"] > 78
+):
+
+    diagnosis = (
+        "High bearing temperature detected. "
+        "Check lubrication condition."
+    )
+
+elif (
+    latest["Motor Current (A)"] > 25
+):
+
+    diagnosis = (
+        "Possible excessive mechanical load "
+        "or motor stress condition."
+    )
+st.write("")
+st.warning(
+    f"Fault Diagnosis Recommendation :  {diagnosis}"
+)
+
 # maintenance information
 
 next_inspection = (
@@ -773,172 +898,194 @@ st.markdown("---")
 
 if st.button("🔧 Mark Maintenance Done"):
 
-    latest_index = df[
-        df["Fan ID"] == selected_fan
-    ].index[-1]
+    if not authorized:
 
-    df.at[
-        latest_index,
-        "Maintenance Status"
-    ] = "Completed"
+        st.error(
+            "Incorrect admin password."
+        )
 
-    df.at[
-        latest_index,
-        "Health Score (%)"
-    ] = 98
+    else:
 
-    df.at[
-        latest_index,
-        "Risk Level"
-    ] = "Low"
+        latest_index = df[
+            df["Fan ID"] == selected_fan
+        ].index[-1]
 
-    df.at[
-        latest_index,
-        "Predicted Remaining Life"
-    ] = "24 months"
+        df.at[
+            latest_index,
+            "Health Score (%)"
+        ] = 98.0
 
-    df.to_csv(
-        "rc_fan_realistic_maintenance_dataset.csv",
-        index=False
+        df.at[
+            latest_index,
+            "Risk Level"
+        ] = "Low"
+
+        df.at[
+            latest_index,
+            "Predicted Remaining Life"
+        ] = "24 months"
+
+        df.at[
+            latest_index,
+            "Next Maintenance Date"
+        ] = (
+            pd.Timestamp.today()
+            + pd.Timedelta(days=180)
+        ).strftime("%Y-%m-%d")
+
+        df.to_csv(
+            "rc_fan_realistic_maintenance_dataset.csv",
+            index=False
+        )
+
+        with open("activity_log.txt", "a") as log_file:
+
+          log_file.write(
+              f"Maintenance completed for {selected_fan}\n"
+           )
+
+        st.success(
+            f"{selected_fan} maintenance marked as completed!"
+        )
+
+        st.rerun()
+
+
+st.markdown("---")
+
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📈 Health",
+    "🌡 Temperature",
+    "📳 Vibration",
+    "⚡ Current"
+])
+
+with tab1:
+
+    st.subheader("Health Score Trend")
+
+    fig3 = px.line(
+        fan_data,
+        x="Date",
+        y="Health Score (%)",
+        title="Health Score Over Time",
+        markers=True
     )
-    
-    st.session_state.activity_log.append(
-        f"Maintenance completed for {selected_fan}"
+
+    fig3.add_hline(
+        y=90,
+        line_dash="dash",
+        line_color="green",
+        annotation_text="Healthy Zone"
     )
 
-    st.success(
-        f"{selected_fan} maintenance marked completed!"
+    fig3.add_hline(
+        y=78,
+        line_dash="dash",
+        line_color="orange",
+        annotation_text="Risk Threshold"
     )
 
-    st.rerun()
-st.markdown("---")
+    st.plotly_chart(
+        fig3,
+        use_container_width=True
+    )
 
-# health score graph
-st.subheader("Health Score Trend")
+with tab2:
 
-fig3 = px.line(
-    fan_data,
-    x="Date",
-    y="Health Score (%)",
-    title="Health Score Over Time",
-    markers=True
-)
+    st.subheader("Bearing Temperature Trend")
 
-fig3.add_hline(
-    y=90,
-    line_dash="dash",
-    line_color="green",
-    annotation_text="Healthy Zone"
-)
+    fig2 = px.line(
+        fan_data,
+        x="Date",
+        y="Bearing Temp (C)",
+        title="Bearing Temperature Over Time",
+        markers=True
+    )
 
-fig3.add_hline(
-    y=78,
-    line_dash="dash",
-    line_color="orange",
-    annotation_text="Risk Threshold"
-)
+    fig2.add_hline(
+        y=65,
+        line_dash="dash",
+        line_color="orange",
+        annotation_text="Warning Limit"
+    )
 
-st.plotly_chart(
-    fig3,
-    use_container_width=True
-)
+    fig2.add_hline(
+        y=78,
+        line_dash="dash",
+        line_color="red",
+        annotation_text="Critical Limit"
+    )
 
-st.markdown("---")
-# bearing temperature graph
-st.subheader("Bearing Temperature Trend")
+    st.plotly_chart(
+        fig2,
+        use_container_width=True
+    )
 
-fig2 = px.line(
-    fan_data,
-    x="Date",
-    y="Bearing Temp (°C)",
-    title="Bearing Temperature Over Time",
-    markers=True
-)
+with tab3:
 
-fig2.add_hline(
-    y=70,
-    line_dash="dash",
-    line_color="orange",
-    annotation_text="Warning Limit"
-)
+    st.subheader("Vibration Trend")
 
-fig2.add_hline(
-    y=78,
-    line_dash="dash",
-    line_color="red",
-    annotation_text="Critical Limit"
-)
+    fig1 = px.line(
+        fan_data,
+        x="Date",
+        y=[
+            "Vibration X (mm/s)",
+            "Vibration Y (mm/s)"
+        ],
+        title="Vibration Trend Over Time",
+        markers=True
+    )
 
-st.plotly_chart(
-    fig2,
-    use_container_width=True
-)
+    fig1.add_hline(
+        y=2.5,
+        line_dash="dash",
+        line_color="orange",
+        annotation_text="Warning Limit"
+    )
 
-st.markdown("---")
-# vibration graph
-st.subheader("Vibration Trend")
+    fig1.add_hline(
+        y=4,
+        line_dash="dash",
+        line_color="red",
+        annotation_text="Critical Limit"
+    )
 
-fig1 = px.line(
-    fan_data,
-    x="Date",
-    y=[
-        "Vibration X (mm/s)",
-        "Vibration Y (mm/s)"
-    ],
-    title="Vibration Trend Over Time",
-    markers=True
-)
+    st.plotly_chart(
+        fig1,
+        use_container_width=True
+    )
 
-fig1.add_hline(
-    y=2.5,
-    line_dash="dash",
-    line_color="orange",
-    annotation_text="Warning Limit"
-)
+with tab4:
 
-fig1.add_hline(
-    y=4,
-    line_dash="dash",
-    line_color="red",
-    annotation_text="Critical Limit"
-)
+    st.subheader("Motor Current Trend")
 
-st.plotly_chart(
-    fig1,
-    use_container_width=True
-)
+    fig4 = px.line(
+        fan_data,
+        x="Date",
+        y="Motor Current (A)",
+        title="Motor Current Over Time",
+        markers=True
+    )
 
+    fig4.add_hline(
+        y=23.5,
+        line_dash="dash",
+        line_color="orange",
+        annotation_text="Warning Limit"
+    )
 
-st.markdown("---")
-# motor current graph
-st.subheader("Motor Current Trend")
+    fig4.add_hline(
+        y=25,
+        line_dash="dash",
+        line_color="red",
+        annotation_text="Critical Limit"
+    )
 
-fig4 = px.line(
-    fan_data,
-    x="Date",
-    y="Motor Current (A)",
-    title="Motor Current Over Time",
-    markers=True
-)
-
-fig4.add_hline(
-    y=23.5,
-    line_dash="dash",
-    line_color="orange",
-    annotation_text="Warning Limit"
-)
-
-fig4.add_hline(
-    y=25,
-    line_dash="dash",
-    line_color="red",
-    annotation_text="Critical Limit"
-)
-
-st.plotly_chart(
-    fig4,
-    use_container_width=True
-)
+    st.plotly_chart(
+        fig4,
+        use_container_width=True
+    )
 st.markdown("---")
 # inspection table
 st.subheader(f"{selected_fan} Inspection Data")
