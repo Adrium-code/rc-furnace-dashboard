@@ -1,7 +1,13 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-PASSWORD = "tata123"
+PASSWORD = st.secrets["admin_password"]
+
+# bearing degradation influence weights
+
+VIBRATION_WEIGHT = 0.8
+TEMPERATURE_WEIGHT = 0.6
+OPERATING_HOURS_WEIGHT = 0.4
 
 st.set_page_config(
     page_title="RC Furnace Fan Dashboard",
@@ -99,153 +105,199 @@ with st.expander(" Risk & Health Standards for the Furnace Fan"):
         """)
 
 with st.sidebar:
+
     st.subheader("Admin Access")
 
     entered_password = st.text_input(
-       "Enter Password",
-       type="password",
-       )
+        "Enter Password",
+        type="password"
+        
+    )
+
     authorized = entered_password == PASSWORD
 
     st.subheader("Recent Activities")
 
     if st.session_state.activity_log:
 
-       for activity in reversed(
-           st.session_state.activity_log[-5:]
+        for activity in reversed(
+            st.session_state.activity_log[-5:]
         ):
 
-           st.caption(activity)
+            st.caption(activity)
 
     else:
 
-          st.caption("No recent activities.")
-          
+        st.caption("No recent activities.")
+
     st.markdown("---")
+
     with st.expander("➕ Add Inspection"):
-      if authorized:
-          with st.form("inspection_form"):
 
-              fan_id = st.selectbox(
-                  "Fan ID",
-                  df["Fan ID"].unique()
-              )
-            
-              inspection_date = st.date_input(
-                 "Inspection Date"
-              )
+        with st.form("inspection_form"):
 
-              vib_x = st.number_input(
-                  "Vibration X (mm/s)",
-                  value=2.0
-              )
+            fan_id = st.selectbox(
+                "Fan ID",
+                df["Fan ID"].unique()
+            )
 
-              vib_y = st.number_input(
-                  "Vibration Y (mm/s)",
-                  value=2.0
-              )
+            inspection_date = st.date_input(
+                "Inspection Date"
+            )
 
-              bearing_temp = st.number_input(
-                  "Bearing Temp (°C)",
-                  value=65.0
-              )
-            
-              furnace_temp = st.number_input(
-                  "Furnace Temp (°C)",
-                 value=910.0
-              )
-            
-              rpm = st.number_input(
-                  "RPM",
-                  value=1478.0
-              )
+            vib_x = st.number_input(
+                "Vibration X (mm/s)",
+                value=2.0
+            )
 
-              current = st.number_input(
-                  "Motor Current (A)",
-                  value=23.0
-              )
+            vib_y = st.number_input(
+                "Vibration Y (mm/s)",
+                value=2.0
+            )
 
-              power = st.number_input(
-                  "Power Consumption (kW)",
-                  value=15.5
-              )
+            bearing_temp = st.number_input(
+                "Bearing Temp (°C)",
+                value=65.0
+            )
 
-              operating_hours = st.number_input(
-                  "Operating Hours",
-                  value=1000
-              )
+            furnace_temp = st.number_input(
+                "Furnace Temp (°C)",
+                value=910.0
+            )
 
-              submitted = st.form_submit_button(
-                  "Submit Inspection Data"
-              )
+            rpm = st.number_input(
+                "RPM",
+                value=1478.0
+            )
 
-              if submitted:
+            current = st.number_input(
+                "Motor Current (A)",
+                value=23.0
+            )
 
-                  health = (
-                      100
-                      - max(0, (vib_x - 2.4) * 7)
-                      - max(0, (vib_y - 2.4) * 7)
-                      - max(0, (bearing_temp - 70) * 1.3)
-                      - max(0, (current - 23.8) * 5)
-                  )
+            power = st.number_input(
+                "Power Consumption (kW)",
+                value=15.5
+            )
 
-                  health = round(
-                      max(62, min(98, health)),
-                      1
-                  )
+            operating_hours = st.number_input(
+                "Operating Hours",
+                value=1000
+            )
 
-                  if health >= 90:
-                      risk = "Low"
-                      remaining_life = "24 months"
+            submitted = st.form_submit_button(
+                "Submit Inspection Data"
+            )
 
-                  elif health >= 78:
-                      risk = "Moderate"
-                      remaining_life = "12 months"
+            if submitted:
 
-                  else:
-                      risk = "High"
-                      remaining_life = "6 months"
+                if not authorized:
 
-                  next_maintenance = (
-                      pd.Timestamp.today()
-                      + pd.Timedelta(days=180)
-                  )
+                    st.error(
+                        "Incorrect admin password."
+                    )
 
-                  new_row = {
-                      "Date": inspection_date,
-                      "Fan ID": fan_id,
-                      "Furnace Temp (°C)": furnace_temp,
-                      "Vibration X (mm/s)": vib_x,
-                      "Vibration Y (mm/s)": vib_y,
-                      "Bearing Temp (°C)": bearing_temp,
-                      "RPM": rpm,
-                      "Motor Current (A)": current,
-                      "Power Consumption (kW)": power,
-                      "Operating Hours": operating_hours,
-                      "Health Score (%)": health,
-                      "Risk Level": risk,
-                      "Maintenance Performed": "No",
-                      "Predicted Remaining Life": remaining_life,
-                      "Next Maintenance Date": next_maintenance.strftime("%Y-%m-%d")
-                  }
+                else:
 
-                  df = pd.concat(
-                      [df, pd.DataFrame([new_row])],
-                      ignore_index=True
-                  )
+                    health = (
+                        100
+                        - max(0, (vib_x - 2.4) * 7)
+                        - max(0, (vib_y - 2.4) * 7)
+                        - max(0, (bearing_temp - 70) * 1.3)
+                        - max(0, (current - 23.8) * 5)
+                    )
 
-                  df.to_csv(
-                      "rc_fan_realistic_maintenance_dataset.csv",
-                      index=False
-                  )
-                
-                  st.session_state.activity_log.append(
-                     f"Inspection added for {fan_id}"
-                  )
+                    health = round(
+                        max(62, min(98, health)),
+                        1
+                    )
 
-                  st.success(
-                      "New inspection data added successfully!"
-                  )
+                    degradation_score = (
+
+                        (
+                            (vib_x + vib_y) * 10
+                        )
+                        * VIBRATION_WEIGHT
+
+                        +
+
+                        (
+                            max(0, bearing_temp - 50)
+                        )
+                        * TEMPERATURE_WEIGHT
+
+                        +
+
+                        (
+                            operating_hours / 1000
+                        )
+                        * OPERATING_HOURS_WEIGHT
+                    )
+
+                    remaining_life = max(
+
+                        1,
+
+                        int(36 - degradation_score)
+
+                    )
+
+                    remaining_life = (
+                        f"{remaining_life} months"
+                    )
+
+                    if health >= 90:
+
+                        risk = "Low"
+
+                    elif health >= 78:
+
+                        risk = "Moderate"
+
+                    else:
+
+                        risk = "High"
+
+                    next_maintenance = (
+                        pd.Timestamp.today()
+                        + pd.Timedelta(days=180)
+                    )
+
+                    new_row = {
+                        "Date": inspection_date,
+                        "Fan ID": fan_id,
+                        "Furnace Temp (°C)": furnace_temp,
+                        "Vibration X (mm/s)": vib_x,
+                        "Vibration Y (mm/s)": vib_y,
+                        "Bearing Temp (°C)": bearing_temp,
+                        "RPM": rpm,
+                        "Motor Current (A)": current,
+                        "Power Consumption (kW)": power,
+                        "Operating Hours": operating_hours,
+                        "Health Score (%)": health,
+                        "Risk Level": risk,
+                        "Maintenance Performed": "No",
+                        "Predicted Remaining Life": remaining_life,
+                        "Next Maintenance Date": next_maintenance.strftime("%Y-%m-%d")
+                    }
+
+                    df = pd.concat(
+                        [df, pd.DataFrame([new_row])],
+                        ignore_index=True
+                    )
+
+                    df.to_csv(
+                        "rc_fan_realistic_maintenance_dataset.csv",
+                        index=False
+                    )
+
+                    st.session_state.activity_log.append(
+                        f"Inspection added for {fan_id}"
+                    )
+
+                    st.success(
+                        "New inspection data added successfully!"
+                    )
 
 selected_fan = st.session_state.get(
     "selected_fan",
