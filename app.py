@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+from datetime import datetime
+import pytz
 PASSWORD = st.secrets["admin_password"]
 
 # bearing degradation influence weights
@@ -127,7 +129,7 @@ st.markdown(
         font-size: 14px;
         letter-spacing: 1px;
     ">
-    Predictive Maintenance System for Industrial RC Fans&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;Last Updated: {pd.Timestamp.now().strftime('%d-%m-%Y , %H:%M:%S')}
+    Predictive Maintenance System for Industrial RC Fans&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;Last Updated: {datetime.now(pytz.timezone("Asia/Kolkata")).strftime('%d-%m-%Y , %H:%M:%S')}
     </p>
     """,
     unsafe_allow_html=True
