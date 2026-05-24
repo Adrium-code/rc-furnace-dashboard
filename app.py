@@ -4,7 +4,7 @@ import plotly.express as px
 import os
 from datetime import datetime
 import pytz
-PASSWORD = st.secrets["admin_password"]
+PASSWORD = "tata123"
 
 # bearing degradation influence weights
 
@@ -19,6 +19,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
 
 import base64
 
@@ -147,7 +148,6 @@ if not os.path.exists("activity_log.txt"):
 # fan selection buttons
 fan_list = df["Fan ID"].unique()
 
-top_col1, top_col2 = st.columns([1, 1])
 
 with st.expander(" Risk & Health Standards for the Furnace Fan"):
 
@@ -371,17 +371,23 @@ with st.sidebar:
 
                         risk = "High"
 
-                    if risk == "High":
+                    remaining_life_months = max(
 
-                     maintenance_days = 30
+                        1,
 
-                    elif risk == "Moderate":
+                        int(36 - (degradation_score * 0.4))
 
-                     maintenance_days = 90
+                    )
 
-                    else:
+                    maintenance_months = max(
 
-                     maintenance_days = 180
+                        1,
+
+                        remaining_life_months // 2
+
+                    )
+
+                    maintenance_days = maintenance_months * 30                   
 
                     next_maintenance = (
                        pd.Timestamp.today()
@@ -763,9 +769,6 @@ st.markdown('<div class="sticky-container">', unsafe_allow_html=True)
 st.subheader("RC Fan Status Overview")
 st.write("")
 
-cols = st.columns(len(fan_list))
-
-
 st.markdown("""
 <style>
 @keyframes pulse {
@@ -790,6 +793,50 @@ for i, fan in enumerate(fan_list):
     latest_fan = df[df["Fan ID"] == fan].iloc[-1]
 
     risk = latest_fan["Risk Level"]
+    
+    fan_history = df[
+        df["Fan ID"] == fan
+    ].reset_index(drop=True)
+
+    fan_trend_warning = False
+
+    if len(fan_history) >= 10:
+
+        recent_vib = (
+            fan_history["Vibration X (mm/s)"]
+            .tail(5)
+            .mean()
+        )
+
+        old_vib = (
+            fan_history["Vibration X (mm/s)"]
+            .iloc[-10:-5]
+            .mean()
+        )
+
+        recent_temp = (
+            fan_history["Bearing Temp (C)"]
+            .tail(5)
+            .mean()
+        )
+
+        old_temp = (
+            fan_history["Bearing Temp (C)"]
+            .iloc[-10:-5]
+            .mean()
+        )
+
+        if (
+            recent_vib - old_vib > 0.1
+            or recent_temp - old_temp > 1
+        ):
+
+            fan_trend_warning = True
+
+
+    if fan_trend_warning and risk == "Low":
+
+        risk = "Moderate"
 
     if risk == "Low":
         color = "green"
@@ -799,7 +846,6 @@ for i, fan in enumerate(fan_list):
 
     else:
         color = "red"
-
     with cols[i]:
 
         st.markdown(
@@ -870,14 +916,15 @@ latest = fan_data.iloc[-1]
 
 trend_warning = ""
 
-if len(fan_data) >= 5:
+
+if len(fan_data) >= 10:
 
     recent_vibration = (
         fan_data["Vibration X (mm/s)"]
         .tail(5)
         .mean()
     )
-
+    
     old_vibration = (
         fan_data["Vibration X (mm/s)"]
         .iloc[-10:-5]
@@ -916,15 +963,38 @@ if len(fan_data) >= 5:
             " Bearing temperature rising steadily. "
         )
 
+display_health = latest["Health Score (%)"]
+
+display_remaining = int(
+    latest["Predicted Remaining Life"]
+    .split()[0]
+)
+
+if trend_warning:
+
+    display_health -= 5
+
+    display_remaining -= 2
+
+display_health = max(0, display_health)
+
+display_remaining = max(1, display_remaining)
+
 # top status cards
 col1, col2, col3 = st.columns([1.2, 1.2, 1.2])
 
 risk = latest["Risk Level"]
 
-if risk == "Low":
+display_risk = risk
+
+if trend_warning and risk == "Low":
+
+    display_risk = "Moderate"
+
+if display_risk == "Low":
     card_color = "#00c853"
 
-elif risk == "Moderate":
+elif display_risk == "Moderate":
     card_color = "#ff9800"
 
 else:
@@ -948,9 +1018,9 @@ with col1:
     st.markdown(
         f"""
         <div style="{card_style}">
-            <h5>Health Score</h5>
+            <h5>Live Health Score</h5>
             <h3 style="color:{card_color};">
-            {latest['Health Score (%)']}%
+            {display_health}%
             </h3>
         </div>
         """,
@@ -964,7 +1034,7 @@ with col2:
         <div style="{card_style}">
             <h5>Risk Level</h5>
             <h3 style="color:{card_color};">
-            {latest['Risk Level']}
+            {display_risk}
             </h3>
         </div>
         """,
@@ -976,9 +1046,9 @@ with col3:
     st.markdown(
         f"""
         <div style="{card_style}">
-            <h5>Remaining Life</h5>
+            <h5>Est. Remaining Life</h5>
             <h3 style="color:{card_color};">
-            {latest['Predicted Remaining Life']}
+            {display_remaining} months
             </h3>
         </div>
         """,
@@ -1074,57 +1144,27 @@ st.markdown("---")
 if st.button("🔧 Mark Maintenance Done"):
 
     if not authorized:
-
-        st.error(
-            "Incorrect admin password."
-        )
+        st.error("Incorrect admin password.")
 
     else:
-
-        latest_index = df[
-            df["Fan ID"] == selected_fan
-        ].index[-1]
+        latest_index = df[df["Fan ID"] == selected_fan].index[-1]
 
         df.at[
             latest_index,
-            "Health Score (%)"
-        ] = 98.0
-
-        df.at[
-            latest_index,
-            "Risk Level"
-        ] = "Low"
-
-        df.at[
-            latest_index,
-            "Predicted Remaining Life"
-        ] = "24 months"
-
-        df.at[
-            latest_index,
-            "Next Maintenance Date"
-        ] = (
-            pd.Timestamp.today()
-            + pd.Timedelta(days=180)
-        ).strftime("%Y-%m-%d")
-
-        df.to_csv(
-            "rc_fan_realistic_maintenance_dataset.csv",
-            index=False
-        )
+            "Maintenance Performed"
+        ] = "Performed"     
+        
+        df.to_csv("rc_fan_realistic_maintenance_dataset.csv", index=False)
 
         with open("activity_log.txt", "a") as log_file:
+            log_file.write(f"{datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%d-%m-%Y ,  %H:%M:%S')}  |  Maintenance completed for {selected_fan}\n")
 
-          log_file.write(
-              f"Maintenance completed for {selected_fan}\n"
-           )
-
-        st.success(
-            f"{selected_fan} maintenance marked as completed!"
-        )
-
+        st.session_state["maintenance_msg"] = f"{selected_fan} maintenance marked as completed!"
         st.rerun()
 
+if "maintenance_msg" in st.session_state:
+    st.success(st.session_state["maintenance_msg"])
+    del st.session_state["maintenance_msg"]
 
 st.markdown("---")
 
