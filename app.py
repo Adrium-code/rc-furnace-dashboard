@@ -4,8 +4,7 @@ import plotly.express as px
 import os
 from datetime import datetime
 import pytz
-PASSWORD = "tata123"
-
+PASSWORD = st.secrets["admin_password"]
 # bearing degradation influence weights
 
 VIBRATION_WEIGHT = 0.8
