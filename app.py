@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
-PASSWORD = "tata123"
+PASSWORD = st.secrets["admin_password"]
 
 # bearing degradation influence weights
 
