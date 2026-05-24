@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
-PASSWORD = st.secrets["admin_password"]
+PASSWORD = "tata123"
 
 # bearing degradation influence weights
 
@@ -73,6 +73,52 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+st.markdown("""
+<style>
+
+section[data-testid="stSidebar"] {
+    background-color: #0d1117;
+    border-right: 1px solid #1f2937;
+}
+
+section[data-testid="stSidebar"] h3 {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #9ca3af !important;
+    margin-bottom: 8px !important;
+}
+
+section[data-testid="stSidebar"] input {
+    background-color: #161b27 !important;
+    border: 1px solid #374151 !important;
+    border-radius: 10px !important;
+    color: white !important;
+    padding: 10px !important;
+    box-shadow: 0 0 6px rgba(255,255,255,0.05);
+}
+
+section[data-testid="stSidebar"] details {
+    background-color: #161b27 !important;
+    border: 1px solid #1f2937 !important;
+    border-radius: 8px !important;
+}
+
+section[data-testid="stSidebar"] .stCaption {
+    color: #6b7280 !important;
+    font-size: 12px !important;
+}
+
+section[data-testid="stSidebar"] hr {
+    border-color: #1f2937 !important;
+    margin: 12px 0 !important;
+}
+
+
+</style>
+""", unsafe_allow_html=True)
+
 st.markdown(
     f"""
     <p style="
@@ -99,9 +145,13 @@ if not os.path.exists("activity_log.txt"):
 # fan selection buttons
 fan_list = df["Fan ID"].unique()
 
+top_col1, top_col2 = st.columns([1, 1])
+
 with st.expander(" Risk & Health Standards for the Furnace Fan"):
 
-    col1, col2, col3 = st.columns(3)
+    space1, col1, col2, col3, space2 = st.columns(
+    [0.35, 1, 1, 1, 0.35]
+    )
 
     with col1:
 
@@ -113,9 +163,9 @@ with st.expander(" Risk & Health Standards for the Furnace Fan"):
         - Current < 23.5 A
         - Health > 90
         """)
-        st.markdown("---")
+        
         st.markdown("""
-        :green[Healthy condition.]
+        :green[Healthy Condition.]
         """)
 
     with col2:
@@ -128,9 +178,9 @@ with st.expander(" Risk & Health Standards for the Furnace Fan"):
         - Current = 23.5–25 A
         - Health = 78–90
         """)
-        st.markdown("---")
+        
         st.markdown("""
-        :orange[Early degradation signs.]
+        :orange[Early Degradation Signs.]
         """)
 
     with col3:
@@ -143,9 +193,9 @@ with st.expander(" Risk & Health Standards for the Furnace Fan"):
         - Current > 25 A
         - Health < 78
         """)
-        st.markdown("---")
+        
         st.markdown("""
-        :red[Maintenance required.]
+        :red[Maintenance Required.]
         """)
 
 with st.sidebar:
@@ -159,6 +209,21 @@ with st.sidebar:
     )
 
     authorized = entered_password == PASSWORD
+
+    if entered_password:
+
+        if authorized:
+
+            st.success(
+                "Admin access granted"
+            )
+
+        else:
+
+            st.error(
+                "Incorrect password"
+            )
+
     st.markdown("---")
     st.subheader("Recent Activities")
 
@@ -170,7 +235,7 @@ with st.sidebar:
 
           for activity in reversed(activities[-5:]):
 
-              st.caption(activity)
+              st.caption(f"▸&nbsp;&nbsp;{activity}")
 
     else:
 
@@ -696,6 +761,7 @@ st.markdown('<div class="sticky-container">', unsafe_allow_html=True)
 st.subheader("RC Fan Status Overview")
 st.write("")
 
+cols = st.columns(len(fan_list))
 
 
 st.markdown("""
