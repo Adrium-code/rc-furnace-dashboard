@@ -129,7 +129,7 @@ st.markdown(
         font-size: 14px;
         letter-spacing: 1px;
     ">
-    Predictive Maintenance System for Industrial RC Fans&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;Last Updated: {datetime.now(pytz.timezone("Asia/Kolkata")).strftime('%d-%m-%Y , %H:%M:%S')}
+    Predictive Maintenance System for Industrial RC Fans&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;{datetime.now(pytz.timezone("Asia/Kolkata")).strftime('%d-%m-%Y , %H:%M:%S')}
     </p>
     """,
     unsafe_allow_html=True
